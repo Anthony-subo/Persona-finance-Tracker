@@ -1,0 +1,41 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const path = require('path');
+const userRoutes = require('./routes/user');
+const transactionRoutes = require('./routes/transaction');
+
+const app = express();
+
+const mongoUri = 'mongodb+srv://amaina:kiragu333@cluster2.yrnwah6.mongodb.net/finance-tracker?retryWrites=true&w=majority';
+
+mongoose.connect(mongoUri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('Connected to MongoDB Atlas'))
+.catch(err => console.error('Could not connect to MongoDB Atlas', err));
+
+app.use(bodyParser.json());
+app.use('/user', userRoutes);
+app.use('/transaction', transactionRoutes);
+app.use('/uploads', express.static('uploads'));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/bio', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'bio.html'));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+//npm run dev

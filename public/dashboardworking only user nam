@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Basic CSS for the dashboard */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    #pieChart, #lineChart {
+      display: block;
+      margin: 20px auto;
+      width: 80%;
+      max-width: 600px;
+    }
+    form {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    /* CSS for the navigation bar */
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 20px;
+    }
+    .navbar img {
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+    }
+    .navbar .totalMoney {
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      flex: 1;
+    }
+    .navbar .userName {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .navbar button {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <img id="profilePicture" src="default-profile.png" alt="Profile Picture"> <!-- Default image -->
+    <div class="userName" id="userName">User Name</div>
+    <div class="totalMoney" id="totalMoney">Total Money: $0</div>
+    <button onclick="logout()">Logout</button>
+  </div>
+  <h1>Dashboard</h1>
+  <canvas id="pieChart"></canvas>
+  <canvas id="lineChart"></canvas>
+  <form id="transactionForm">
+    <label for="amount">Amount:</label>
+    <input type="number" id="amount" name="amount" required><br>
+    <label for="description">Description:</label>
+    <input type="text" id="description" name="description" required><br>
+    <button type="submit">Add Transaction</button>
+  </form>
+
+  <script>
+    async function getUserInfo() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('No token found. Please log in again.');
+        window.location.href = '/login.html'; // Redirect to login if no token
+        return;
+      }
+
+      try {
+        const response = await fetch('/user/info', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          return await response.json();
+        } else {
+          alert('Error: ' + (await response.text()));
+        }
+      } catch (error) {
+        console.error('Fetch error:', error);
+        alert('An error occurred while fetching user information.');
+      }
+    }
+
+    async function getSummary() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('No token found. Please log in again.');
+        window.location.href = '/login.html'; // Redirect to login if no token
+        return;
+      }
+
+      try {
+        const response = await fetch('/transaction/summary', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          return await response.json();
+        } else {
+          alert('Error: ' + (await response.text()));
+        }
+      } catch (error) {
+        console.error('Fetch error:', error);
+        alert('An error occurred while fetching data.');
+      }
+    }
+
+    async function drawCharts() {
+      const summary = await getSummary();
+      if (!summary) return;
+
+      const initialSalary = summary.initialSalary || 0;
+      const additionalMoney = summary.additionalMoney || 0;
+      const totalMoney = initialSalary + additionalMoney;
+      const transactions = summary.transactions || [];
+
+      // Calculate remaining money after all transactions
+      const spentMoney = transactions.reduce((sum, tx) => sum + (tx.amount || 0), 0);
+      const remainingMoney = totalMoney - spentMoney;
+
+      document.getElementById('totalMoney').textContent = `Total Money: $${remainingMoney.toFixed(2)}`;
+
+      const ctxPie = document.getElementById('pieChart').getContext('2d');
+      const ctxLine = document.getElementById('lineChart').getContext('2d');
+
+      // Update pie chart
+      new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+          labels: transactions.map(tx => tx.description || 'Unknown'),
+          datasets: [{
+            data: transactions.map(tx => tx.amount),
+            backgroundColor: transactions.map(tx => getRandomColor()),
+            borderColor: '#fff',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          plugins: {
+            datalabels: {
+              color: '#fff',
+              display: true,
+              formatter: (value, ctx) => {
+                const total = ctx.dataset.data.reduce((sum, data) => sum + data, 0);
+                const percentage = ((value / total) * 100).toFixed(2);
+                return `${percentage}%`;
+              }
+            }
+          },
+          rotation: -Math.PI / 2, // Rotate the pie chart to place the largest slice at the top
+        }
+      });
+
+      // Update line chart
+      new Chart(ctxLine, {
+        type: 'line',
+        data: {
+          labels: transactions.map(tx => new Date(tx.date).toLocaleDateString()),
+          datasets: [{
+            label: 'Spending Over Time',
+            data: transactions.map(tx => tx.amount),
+            fill: false,
+            borderColor: '#36a2eb'
+          }]
+        }
+      });
+    }
+
+    function getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+
+    async function updateProfilePicture() {
+      const userInfo = await getUserInfo();
+      if (userInfo) {
+        // Set profile picture and user name
+        if (userInfo.profilePictureUrl) {
+          document.getElementById('profilePicture').src = `/uploads/${userInfo.profilePictureUrl}`;
+        } else {
+          document.getElementById('profilePicture').src = 'default-profile.png'; // Fallback image
+        }
+        if (userInfo.name) {
+          document.getElementById('userName').textContent = userInfo.name;
+        }
+      }
+    }
+
+    document.getElementById('transactionForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('No token found. Please log in again.');
+        window.location.href = '/login.html'; // Redirect to login if no token
+        return;
+      }
+
+      const amount = document.getElementById('amount').value;
+      const description = document.getElementById('description').value;
+
+      try {
+        const response = await fetch('/transaction/add', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ amount, description })
+        });
+
+        if (response.ok) {
+          alert('Transaction added successfully');
+          drawCharts(); // Redraw charts after adding the transaction
+        } else {
+          alert('Error: ' + (await response.text()));
+        }
+      } catch(error) {
+        console.error('Fetch error:', error);
+        alert('An error occurred while adding the transaction.');
+      }
+    });
+
+    // Call functions to populate the dashboard on load
+    window.onload = async () => {
+      await updateProfilePicture();
+      await drawCharts();
+    };
+
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.href = '/login.html'; // Redirect to login page
+    }
+  </script>
+</body>
+</html>

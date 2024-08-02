@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bio</title>
+  <link rel="stylesheet" href="/css/bio.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Bio</h1>
+  <form id="bioForm" enctype="multipart/form-data">
+    <label for="profilePicture">Profile Picture:</label>
+    <input type="file" id="profilePicture" name="profilePicture" required><br>
+    <label for="initialSalary">Initial Salary:</label>
+    <input type="number" id="initialSalary" name="initialSalary" required><br>
+    <label for="additionalMoney">Additional Money:</label>
+    <input type="number" id="additionalMoney" name="additionalMoney" required><br>
+    <button type="submit">Save Bio</button>
+  </form>
+
+  </div>
+  
+  <script>
+    document.getElementById('bioForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = localStorage.getItem('token'); // Assuming you stored the token in localStorage
+      const formData = new FormData();
+      formData.append('profilePicture', document.getElementById('profilePicture').files[0]);
+      formData.append('initialSalary', document.getElementById('initialSalary').value);
+      formData.append('additionalMoney', document.getElementById('additionalMoney').value);
+
+      const response = await fetch('/user/bio', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+
+      if (response.ok) {
+        alert('Bio updated successfully');
+        window.location.href = '/dashboard';
+      } else {
+        alert('Error: ' + (await response.text()));
+      }
+    });
+  </script>
+</body>
+</html>
