@@ -1,5 +1,5 @@
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 
@@ -27,3 +27,6 @@ Thumbs.db
 # Miscellaneous
 *.swp
 *.swo
+
+# Explicitly include the public folder
+!public/
